@@ -5,3 +5,6 @@ view = View
 welcome = Welcome to COSMIC! ✨
 page-id = Page { $num }
 git-description = Git commit {$hash} on {$date}
+repository-title = Repository: { $name }
+repository-remotes = Remotes
+repository-branches = Branches
