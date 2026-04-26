@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Sm Git Viewer
+Comment=An application for the COSMIC™ desktop
+Type=Application
+Icon=com.github.pop-os.cosmic-app-template
+Exec=sm-git-viewer %F
+Terminal=false
+StartupNotify=true
+Categories=COSMIC
+Keywords=COSMIC
+MimeType=
