@@ -35,7 +35,7 @@ pub struct AppModel {
     /// Toggle the watch subscription
     watch_is_active: bool,
     /// The git repository for the application.
-    repository: Option::<git2::Repository>,
+    repository: Option::<Box<dyn crate::git::interfaces::Repository>>,
 }
 
 /// Messages emitted by the application and its widgets.
@@ -102,27 +102,28 @@ impl cosmic::Application for AppModel {
             .links([(fl!("repository"), REPOSITORY)])
             .license(env!("CARGO_PKG_LICENSE"));
 
+        // Load configuration first so we can construct the repository from it.
+        let loaded_config: Config = cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
+            .map(|context| match Config::get_entry(&context) {
+                Ok(config) => config,
+                Err((_errors, config)) => config,
+            })
+            .unwrap_or_default();
+
+        // Create a DataProvider from the loaded config and ask for the repository.
+        let provider = crate::git::git2::ConfigDataProvider::new(&loaded_config);
+        let repo = provider.get_repository();
+
         // Construct the app model with the runtime's core.
         let mut app = AppModel {
             core,
             context_page: ContextPage::default(),
             about,
             nav,
-            repository: Some(AppModel::init_repository()),
+            repository: Some(repo),
             key_binds: HashMap::new(),
-            // Optional configuration file for an application.
-            config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
-                .map(|context| match Config::get_entry(&context) {
-                    Ok(config) => config,
-                    Err((_errors, config)) => {
-                        // for why in errors {
-                        //     tracing::error!(%why, "error loading app config");
-                        // }
-
-                        config
-                    }
-                })
-                .unwrap_or_default(),
+            // Configuration data that persists between application runs.
+            config: loaded_config,
             time: 0,
             watch_is_active: false,
         };
@@ -201,8 +202,14 @@ impl cosmic::Application for AppModel {
             }
 
             Page::Page2 => {
+                let repo_name = self
+                    .repository
+                    .as_ref()
+                    .map(|r| r.get_name().to_string())
+                    .unwrap_or_default();
+
                 let header = widget::row::with_capacity(2)
-                    .push(widget::text::title1(fl!("repository-title", name = self.repository.as_ref().unwrap().path().to_str().unwrap_or_default())))
+                    .push(widget::text::title1(fl!("repository-title", name = repo_name)))
                     .align_y(Alignment::End)
                     .spacing(space_s);
 
@@ -212,23 +219,19 @@ impl cosmic::Application for AppModel {
                     .height(Length::Fill);
 
                 if let Some(repo) = &self.repository {
-                    let remotes = match repo.remotes() {
-                        Ok(remotes) => remotes,
-                        Err(_) => panic!("Expected remotes!")
-                    };
-                    let branches = repo.branches(None).expect("expected to find some branches");
+                    let remotes = repo.get_remotes();
+                    let branches = repo.get_branches();
+
                     let mut remote_list: cosmic::widget::Row<'_, Message, cosmic::Theme> = widget::row::with_capacity(remotes.len());
                     for remote in remotes.iter() {
-                        remote_list = remote_list.push(widget::text::text(remote.unwrap_or_default().to_string()));
+                        remote_list = remote_list.push(widget::text::text(remote.to_string()));
                     }
-                    let branches_vec: Vec<_> = branches.collect();
-                    let mut branches_list: cosmic::widget::Row<'_, Message, cosmic::Theme> = widget::row::with_capacity(branches_vec.len());
-                    for branch in branches_vec {
-                        let branch_result = branch.expect("expected branch");
-                        branches_list = branches_list.push(widget::text::text(
-                            branch_result.0.name().unwrap_or(None).unwrap_or("unknown").to_string()
-                        ));
+
+                    let mut branches_list: cosmic::widget::Row<'_, Message, cosmic::Theme> = widget::row::with_capacity(branches.len());
+                    for branch in branches.iter() {
+                        branches_list = branches_list.push(widget::text::text(branch.to_string()));
                     }
+
                     let section = widget::column::with_capacity(4)
                         .push(widget::text::title2(fl!("repository-remotes")))
                         .push(remote_list)
@@ -370,9 +373,9 @@ impl AppModel {
         }
     }
 
-    fn init_repository() -> git2::Repository {
+    fn init_repository() -> Box<dyn crate::git::interfaces::Repository> {
         // for now, just local repo
-        match git2::Repository::init("/home/sammear/code/specdb-query") {
+        match crate::git::git2::Git2Repository::open("/home/sammear/code/specdb-query") {
             Ok(repo) => repo,
             Err(e) => panic!("Failed to initialize repository: {}", e),
         }
