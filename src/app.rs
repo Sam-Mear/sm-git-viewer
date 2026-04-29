@@ -79,20 +79,30 @@ impl cosmic::Application for AppModel {
         let mut nav = nav_bar::Model::default();
 
         nav.insert()
-            .text(fl!("page-id", num = 1))
-            .data::<Page>(Page::Page1)
-            .icon(icon::from_name("applications-science-symbolic"))
+            .text(fl!("debug-page-title"))
+            .data::<Page>(Page::Debug)
+            .icon(icon::from_name("applications-system-symbolic"))
             .activate();
 
         nav.insert()
-            .text(fl!("page-id", num = 2))
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
+            .text(fl!("commits-page-title"))
+            .data::<Page>(Page::Commits)
+            .icon(icon::from_name("applications-utilities-symbolic"));
 
         nav.insert()
-            .text(fl!("page-id", num = 3))
-            .data::<Page>(Page::Page3)
-            .icon(icon::from_name("applications-games-symbolic"));
+            .text(fl!("branches-page-title"))
+            .data::<Page>(Page::Branches)
+            .icon(icon::from_name("applications-utilities-symbolic"));
+
+        nav.insert()
+            .text(fl!("issues-page-title"))
+            .data::<Page>(Page::Issues)
+            .icon(icon::from_name("applications-utilities-symbolic"));
+
+        nav.insert()
+            .text(fl!("pull-requests-page-title"))
+            .data::<Page>(Page::PullRequests)
+            .icon(icon::from_name("applications-utilities-symbolic"));
 
         // Create the about widget
         let about = About::default()
@@ -174,34 +184,7 @@ impl cosmic::Application for AppModel {
     fn view(&self) -> Element<'_, Self::Message> {
         let space_s = cosmic::theme::spacing().space_s;
         let content: Element<_> = match self.nav.active_data::<Page>().unwrap() {
-            Page::Page1 => {
-                let header = widget::row::with_capacity(2)
-                    .push(widget::text::title1(fl!("welcome")))
-                    .push(widget::text::title3(fl!("page-id", num = 1)))
-                    .align_y(Alignment::End)
-                    .spacing(space_s);
-
-                let counter_label = ["Watch: ", self.time.to_string().as_str()].concat();
-                let section = cosmic::widget::settings::section().add(
-                    cosmic::widget::settings::item::builder(counter_label).control(
-                        widget::button::text(if self.watch_is_active {
-                            "Stop"
-                        } else {
-                            "Start"
-                        })
-                        .on_press(Message::ToggleWatch),
-                    ),
-                );
-
-                widget::column::with_capacity(2)
-                    .push(header)
-                    .push(section)
-                    .spacing(space_s)
-                    .height(Length::Fill)
-                    .into()
-            }
-
-            Page::Page2 => {
+            Page::Debug => {
                 let repo_name = self
                     .repository
                     .as_ref()
@@ -243,10 +226,48 @@ impl cosmic::Application for AppModel {
                 column.into()
             }
 
-            Page::Page3 => {
+            Page::Commits => {
                 let header = widget::row::with_capacity(2)
-                    .push(widget::text::title1(fl!("welcome")))
-                    .push(widget::text::title3(fl!("page-id", num = 3)))
+                    .push(widget::text::title1(fl!("commits-page-title")))
+                    .align_y(Alignment::End)
+                    .spacing(space_s);
+
+                widget::column::with_capacity(1)
+                    .push(header)
+                    .spacing(space_s)
+                    .height(Length::Fill)
+                    .into()
+            }
+
+            Page::Branches => {
+                let header = widget::row::with_capacity(2)
+                    .push(widget::text::title1(fl!("branches-page-title")))
+                    .align_y(Alignment::End)
+                    .spacing(space_s);
+
+                widget::column::with_capacity(1)
+                    .push(header)
+                    .spacing(space_s)
+                    .height(Length::Fill)
+                    .into()
+            }
+
+            Page::Issues => {
+                let header = widget::row::with_capacity(2)
+                    .push(widget::text::title1(fl!("issues-page-title")))
+                    .align_y(Alignment::End)
+                    .spacing(space_s);
+
+                widget::column::with_capacity(1)
+                    .push(header)
+                    .spacing(space_s)
+                    .height(Length::Fill)
+                    .into()
+            }
+
+            Page::PullRequests => {
+                let header = widget::row::with_capacity(2)
+                    .push(widget::text::title1(fl!("pull-requests-page-title")))
                     .align_y(Alignment::End)
                     .spacing(space_s);
 
@@ -384,9 +405,11 @@ impl AppModel {
 
 /// The page to display in the application.
 pub enum Page {
-    Page1,
-    Page2,
-    Page3,
+    Debug,
+    Commits,
+    Branches,
+    Issues,
+    PullRequests,
 }
 
 /// The context page to display in the context drawer.
